@@ -988,7 +988,7 @@ func Test_popup_complete_backwards()
   call setline(1, ['Post', 'Port', 'Po'])
   let expected=['Post', 'Port', 'Port']
   call cursor(3,2)
-  call feedkeys("A\<C-X>". repeat("\<C-P>", 3). "rt\<cr>", 'tx')
+  call feedkeys("A\<C-X>". repeat("\<C-P>", 3). "rt\<C-Y>", 'tx')
   call assert_equal(expected, getline(1,'$'))
   bwipe!
 endfunc
@@ -998,7 +998,7 @@ func Test_popup_complete_backwards_ctrl_p()
   call setline(1, ['Post', 'Port', 'Po'])
   let expected=['Post', 'Port', 'Port']
   call cursor(3,2)
-  call feedkeys("A\<C-P>\<C-N>rt\<cr>", 'tx')
+  call feedkeys("A\<C-P>\<C-N>rt\<C-Y>", 'tx')
   call assert_equal(expected, getline(1,'$'))
   bwipe!
 endfunc
@@ -1936,6 +1936,23 @@ func Test_pum_complete_with_special_characters()
   call TermWait(buf, 50)
   call VerifyScreenDump(buf, 'Test_pum_with_special_characters_08', {})
   call term_sendkeys(buf, "\<C-E>\<Esc>")
+
+  call term_sendkeys(buf, ":setlocal autoindent tabstop=2 shiftwidth=2\<CR>")
+  call term_sendkeys(buf, "Slocal a = \<C-X>\<C-O>")
+  call TermWait(buf, 50)
+  call VerifyScreenDump(buf, 'Test_pum_with_special_characters_09', {})
+
+  call term_sendkeys(buf, "\<C-Y>")
+  call TermWait(buf, 50)
+  call VerifyScreenDump(buf, 'Test_pum_with_special_characters_10', {})
+
+  call term_sendkeys(buf, "\<ESC>kAlocal b = \<C-X>\<C-O>")
+  call TermWait(buf, 50)
+  call VerifyScreenDump(buf, 'Test_pum_with_special_characters_11', {})
+
+  call term_sendkeys(buf, "\<C-Y>")
+  call TermWait(buf, 50)
+  call VerifyScreenDump(buf, 'Test_pum_with_special_characters_12', {})
 
   call StopVimInTerminal(buf)
 endfunc

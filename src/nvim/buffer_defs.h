@@ -208,7 +208,7 @@ typedef struct {
   OptInt wo_winbl;
 #define w_p_winbl w_onebuf_opt.wo_winbl  // 'winblend'
 
-  LastSet wo_script_ctx[kWinOptCount];  // SCTXs for window-local options
+  sctx_T wo_script_ctx[kWinOptCount];  // SCTXs for window-local options
 #define w_p_script_ctx w_onebuf_opt.wo_script_ctx
 } winopt_T;
 
@@ -413,8 +413,7 @@ struct file_buffer {
                                 // negative when lines were deleted
   kvec_t(WinInfo *) b_wininfo;  // list of last used info for each window
   disptick_T b_mod_tick_syn;    // last display tick syntax was updated
-  disptick_T b_mod_tick_decor;  // last display tick decoration providers
-                                // where invoked
+  disptick_T b_mod_tick_decor;  // last display tick decoration providers were invoked
 
   int64_t b_mtime;              // last change time of original file
   int64_t b_mtime_ns;           // nanoseconds of last change time
@@ -510,7 +509,7 @@ struct file_buffer {
   // or contents of the file being edited.
   bool b_p_initialized;                 // set when options initialized
 
-  LastSet b_p_script_ctx[kBufOptCount];  // SCTXs for buffer-local options
+  sctx_T b_p_script_ctx[kBufOptCount];  // SCTXs for buffer-local options
 
   int b_p_ai;                   ///< 'autoindent'
   int b_p_ai_nopaste;           ///< b_p_ai saved for paste mode
@@ -813,6 +812,7 @@ typedef struct {
   uint16_t wl_size;             // height in screen lines
   char wl_valid;                // true values are valid for text in buffer
   char wl_folded;               // true when this is a range of folded lines
+  linenr_T wl_foldend;          // last buffer line number for folded line
   linenr_T wl_lastlnum;         // last buffer line number for logical line
 } wline_T;
 
@@ -1312,23 +1312,15 @@ struct window_S {
   linenr_T w_statuscol_line_count;      // line count when 'statuscolumn' width was computed.
   int w_nrwidth_width;                  // nr of chars to print line count.
 
-  qf_info_T *w_llist;                 // Location list for this window
+  qf_info_T *w_llist;                   // Location list for this window
   // Location list reference used in the location list window.
   // In a non-location list window, w_llist_ref is NULL.
   qf_info_T *w_llist_ref;
 
-  // Status line click definitions
-  StlClickDefinition *w_status_click_defs;
-  // Size of the w_status_click_defs array
-  size_t w_status_click_defs_size;
-
-  // Window bar click definitions
-  StlClickDefinition *w_winbar_click_defs;
-  // Size of the w_winbar_click_defs array
-  size_t w_winbar_click_defs_size;
-
-  // Status column click definitions
-  StlClickDefinition *w_statuscol_click_defs;
-  // Size of the w_statuscol_click_defs array
-  size_t w_statuscol_click_defs_size;
+  StlClickDefinition *w_status_click_defs;      // Status line click definitions
+  size_t w_status_click_defs_size;              // Size of the w_status_click_defs array
+  StlClickDefinition *w_winbar_click_defs;      // Window bar click definitions
+  size_t w_winbar_click_defs_size;              // Size of the w_winbar_click_defs array
+  StlClickDefinition *w_statuscol_click_defs;   // Status column click definitions
+  size_t w_statuscol_click_defs_size;           // Size of the w_statuscol_click_defs array
 };

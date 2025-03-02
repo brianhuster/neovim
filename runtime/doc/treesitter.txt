@@ -492,10 +492,10 @@ capture marks comments as to be checked: >query
 There is also `@nospell` which disables spellchecking regions with `@spell`.
 
                                                 *treesitter-highlight-conceal*
-Treesitter highlighting supports |conceal| via the `conceal` metadata. By
-convention, nodes to be concealed are captured as `@conceal`, but any capture
-can be used. For example, the following query can be used to hide code block
-delimiters in Markdown: >query
+Treesitter highlighting supports |conceal| via the `conceal` and `conceal_lines`
+metadata. By convention, nodes to be concealed are captured as `@conceal`, but
+any capture can be used. For example, the following query can be used to hide
+code block delimiters in Markdown: >query
 
     ((fenced_code_block_delimiter) @conceal (#set! conceal ""))
 <
@@ -506,7 +506,13 @@ still highlighted the same as other operators: >query
 
     "!=" @operator (#set! conceal "≠")
 <
-Conceals specified in this way respect 'conceallevel'.
+To conceal an entire line (do not draw it at all), a query with `conceal_lines`
+metadata can be used: >query
+
+    ((comment) @comment @spell
+      (#set! conceal_lines ""))
+<
+Conceals specified in this way respect 'conceallevel' and 'concealcursor'.
 
 Note that although you can use any string for `conceal`, only the first
 character will be used: >query
@@ -713,7 +719,7 @@ TSNode:extra()                                                *TSNode:extra()*
         (`boolean`)
 
 TSNode:field({name})                                          *TSNode:field()*
-    Returns a table of the nodes corresponding to the {name} field.
+    Returns a list of all the node's children that have the given field name.
 
     Parameters: ~
       • {name}  (`string`)
@@ -908,7 +914,7 @@ get_captures_at_cursor({winnr})
     Returns a list of highlight capture names under the cursor
 
     Parameters: ~
-      • {winnr}  (`integer?`) Window handle or 0 for current window (default)
+      • {winnr}  (`integer?`) |window-ID| or 0 for current window (default)
 
     Return: ~
         (`string[]`) List of capture names
@@ -1186,13 +1192,16 @@ get_lang({filetype})                      *vim.treesitter.language.get_lang()*
 inspect({lang})                            *vim.treesitter.language.inspect()*
     Inspects the provided language.
 
-    Inspecting provides some useful information on the language like node and
-    field names, ABI version, and whether the language came from a WASM
-    module.
+    Inspecting provides some useful information on the language like ABI
+    version, parser state count (a measure of parser complexity), node and
+    field names, and whether the language came from a WASM module.
 
     Node names are returned in a table mapping each node name to a `boolean`
     indicating whether or not the node is named (i.e., not anonymous).
     Anonymous nodes are surrounded with double quotes (`"`).
+
+    For ABI 15 parsers, also show parser metadata (major, minor, patch
+    version) and a table of supertypes with their respective subtypes.
 
     Parameters: ~
       • {lang}  (`string`) Language

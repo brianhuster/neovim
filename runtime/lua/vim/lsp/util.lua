@@ -1417,6 +1417,11 @@ function M._make_floating_popup_size(contents, opts)
   -- make sure borders are always inside the screen
   width = math.min(width, screen_width - border_width)
 
+  -- Make sure that the width is large enough to fit the title.
+  if opts.title then
+    width = math.max(width, vim.fn.strdisplaywidth(opts.title))
+  end
+
   if wrap_at then
     wrap_at = math.min(wrap_at, width)
   end
@@ -1644,8 +1649,14 @@ function M.open_floating_preview(contents, syntax, opts)
 
   if do_stylize then
     vim.wo[floating_winnr].conceallevel = 2
+    vim.wo[floating_winnr].concealcursor = 'n'
     vim.bo[floating_bufnr].filetype = 'markdown'
     vim.treesitter.start(floating_bufnr)
+    if not opts.height then
+      -- Reduce window height if TS highlighter conceals code block backticks.
+      local conceal_height = api.nvim_win_text_height(floating_winnr, {}).all
+      api.nvim_win_set_height(floating_winnr, conceal_height)
+    end
   end
 
   return floating_bufnr, floating_winnr
@@ -1885,7 +1896,7 @@ function M.try_trim_markdown_code_blocks(lines)
   return 'markdown'
 end
 
----@param window integer?: window handle or 0 for current, defaults to current
+---@param window integer?: |window-ID| or 0 for current, defaults to current
 ---@param position_encoding 'utf-8'|'utf-16'|'utf-32'
 local function make_position_param(window, position_encoding)
   window = window or 0
@@ -1904,7 +1915,7 @@ end
 
 --- Creates a `TextDocumentPositionParams` object for the current buffer and cursor position.
 ---
----@param window integer?: window handle or 0 for current, defaults to current
+---@param window integer?: |window-ID| or 0 for current, defaults to current
 ---@param position_encoding 'utf-8'|'utf-16'|'utf-32'
 ---@return lsp.TextDocumentPositionParams
 ---@see https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocumentPositionParams
@@ -1963,7 +1974,7 @@ end
 --- `textDocument/codeAction`, `textDocument/colorPresentation`,
 --- `textDocument/rangeFormatting`.
 ---
----@param window integer? window handle or 0 for current, defaults to current
+---@param window integer?: |window-ID| or 0 for current, defaults to current
 ---@param position_encoding "utf-8"|"utf-16"|"utf-32"
 ---@return { textDocument: { uri: lsp.DocumentUri }, range: lsp.Range }
 function M.make_range_params(window, position_encoding)

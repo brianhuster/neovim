@@ -46,10 +46,9 @@ before using them: >lua
     -- code for plain lua 5.1
   end
 <
-                                                                  *lua-bit*
 One exception is the LuaJIT `bit` extension, which is always available: when
 built with PUC Lua, Nvim includes a fallback implementation which provides
-`require("bit")`.
+`require("bit")`. See |lua-bit|.
 
                                                                   *lua-profile*
 If Nvim is built with LuaJIT, Lua code can be profiled via >lua
@@ -2639,6 +2638,8 @@ vim.ui.open({path}, {opt})                                     *vim.ui.open()*
     `explorer.exe`, Linux `xdg-open`, …), or returns (but does not show) an
     error message on failure.
 
+    Can also be invoked with `:Open`.                                  *:Open*
+
     Expands "~/" and environment variables in filesystem paths.
 
     Examples: >lua
@@ -4624,6 +4625,41 @@ vim.text.hexencode({str})                               *vim.text.hexencode()*
 
     Return: ~
         (`string`) Hex encoded string
+
+vim.text.indent({size}, {text}, {opts})                    *vim.text.indent()*
+    Sets the indent (i.e. the common leading whitespace) of non-empty lines in
+    `text` to `size` spaces/tabs.
+
+    Indent is calculated by number of consecutive indent chars.
+    • The first indented, non-empty line decides the indent char (space/tab):
+      • `SPC SPC TAB …` = two-space indent.
+      • `TAB SPC …` = one-tab indent.
+    • Set `opts.expandtab` to treat tabs as spaces.
+
+    To "dedent" (remove the common indent), pass `size=0`: >lua
+        vim.print(vim.text.indent(0, ' a\n  b\n'))
+<
+
+    To adjust relative-to an existing indent, call indent() twice: >lua
+        local indented, old_indent = vim.text.indent(0, ' a\n b\n')
+        indented = vim.text.indent(old_indent + 2, indented)
+        vim.print(indented)
+<
+
+    To ignore the final, blank line when calculating the indent, use gsub()
+    before calling indent(): >lua
+        local text = '  a\n  b\n '
+        vim.print(vim.text.indent(0, (text:gsub('\n[\t ]+\n?$', '\n'))))
+<
+
+    Parameters: ~
+      • {size}  (`integer`) Number of spaces.
+      • {text}  (`string`) Text to indent.
+      • {opts}  (`{ expandtab?: number }?`)
+
+    Return (multiple): ~
+        (`string`) Indented text.
+        (`integer`) Indent size before modification.
 
 
 ==============================================================================

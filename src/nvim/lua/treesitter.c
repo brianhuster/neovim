@@ -263,45 +263,92 @@ int tslua_inspect_lang(lua_State *L)
 
   lua_createtable(L, 0, 2);  // [retval]
 
-  uint32_t nsymbols = ts_language_symbol_count(lang);
-  assert(nsymbols < INT_MAX);
+  {  // Symbols
+    uint32_t nsymbols = ts_language_symbol_count(lang);
+    assert(nsymbols < INT_MAX);
 
-  lua_createtable(L, (int)(nsymbols - 1), 1);  // [retval, symbols]
-  for (uint32_t i = 0; i < nsymbols; i++) {
-    TSSymbolType t = ts_language_symbol_type(lang, (TSSymbol)i);
-    if (t == TSSymbolTypeAuxiliary) {
-      // not used by the API
-      continue;
+    lua_createtable(L, (int)(nsymbols - 1), 1);  // [retval, symbols]
+    for (uint32_t i = 0; i < nsymbols; i++) {
+      TSSymbolType t = ts_language_symbol_type(lang, (TSSymbol)i);
+      if (t == TSSymbolTypeAuxiliary) {
+        // not used by the API
+        continue;
+      }
+      const char *name = ts_language_symbol_name(lang, (TSSymbol)i);
+      bool named = t != TSSymbolTypeAnonymous;
+      lua_pushboolean(L, named);  // [retval, symbols, is_named]
+      if (!named) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "\"%s\"", name);
+        lua_setfield(L, -2, buf);  // [retval, symbols]
+      } else {
+        lua_setfield(L, -2, name);  // [retval, symbols]
+      }
     }
-    const char *name = ts_language_symbol_name(lang, (TSSymbol)i);
-    bool named = t != TSSymbolTypeAnonymous;
-    lua_pushboolean(L, named);  // [retval, symbols, is_named]
-    if (!named) {
-      char buf[256];
-      snprintf(buf, sizeof(buf), "\"%s\"", name);
-      lua_setfield(L, -2, buf);  // [retval, symbols]
-    } else {
-      lua_setfield(L, -2, name);  // [retval, symbols]
-    }
+
+    lua_setfield(L, -2, "symbols");  // [retval]
   }
 
-  lua_setfield(L, -2, "symbols");  // [retval]
+  {  // Fields
+    uint32_t nfields = ts_language_field_count(lang);
+    lua_createtable(L, (int)nfields, 1);  // [retval, fields]
+    // Field IDs go from 1 to nfields inclusive (extra index 0 maps to NULL)
+    for (uint32_t i = 1; i <= nfields; i++) {
+      lua_pushstring(L, ts_language_field_name_for_id(lang, (TSFieldId)i));
+      lua_rawseti(L, -2, (int)i);  // [retval, fields]
+    }
 
-  uint32_t nfields = ts_language_field_count(lang);
-  lua_createtable(L, (int)nfields, 1);  // [retval, fields]
-  // Field IDs go from 1 to nfields inclusive (extra index 0 maps to NULL)
-  for (uint32_t i = 1; i <= nfields; i++) {
-    lua_pushstring(L, ts_language_field_name_for_id(lang, (TSFieldId)i));
-    lua_rawseti(L, -2, (int)i);  // [retval, fields]
+    lua_setfield(L, -2, "fields");  // [retval]
   }
-
-  lua_setfield(L, -2, "fields");  // [retval]
 
   lua_pushboolean(L, ts_language_is_wasm(lang));
   lua_setfield(L, -2, "_wasm");
 
   lua_pushinteger(L, ts_language_abi_version(lang));  // [retval, version]
-  lua_setfield(L, -2, "_abi_version");
+  lua_setfield(L, -2, "abi_version");
+
+  {  // Metadata
+    const TSLanguageMetadata *meta = ts_language_metadata(lang);
+
+    if (meta != NULL) {
+      lua_createtable(L, 0, 3);
+
+      lua_pushinteger(L, meta->major_version);
+      lua_setfield(L, -2, "major_version");
+      lua_pushinteger(L, meta->minor_version);
+      lua_setfield(L, -2, "minor_version");
+      lua_pushinteger(L, meta->patch_version);
+      lua_setfield(L, -2, "patch_version");
+
+      lua_setfield(L, -2, "metadata");
+    }
+  }
+
+  lua_pushinteger(L, ts_language_state_count(lang));
+  lua_setfield(L, -2, "state_count");
+
+  {  // Supertypes
+    uint32_t nsupertypes;
+    const TSSymbol *supertypes = ts_language_supertypes(lang, &nsupertypes);
+
+    lua_createtable(L, 0, (int)nsupertypes);  // [retval, supertypes]
+    for (uint32_t i = 0; i < nsupertypes; i++) {
+      const TSSymbol supertype = *(supertypes + i);
+
+      uint32_t nsubtypes;
+      const TSSymbol *subtypes = ts_language_subtypes(lang, supertype, &nsubtypes);
+
+      lua_createtable(L, (int)nsubtypes, 0);
+      for (uint32_t j = 1; j <= nsubtypes; j++) {
+        lua_pushstring(L, ts_language_symbol_name(lang, *(subtypes + j)));
+        lua_rawseti(L, -2, (int)j);
+      }
+
+      lua_setfield(L, -2, ts_language_symbol_name(lang, supertype));
+    }
+
+    lua_setfield(L, -2, "supertypes");  // [retval]
+  }
 
   return 1;
 }
@@ -998,16 +1045,21 @@ static int node_symbol(lua_State *L)
 static int node_field(lua_State *L)
 {
   TSNode node = node_check(L, 1);
+  uint32_t count = ts_node_child_count(node);
+  int curr_index = 0;
 
   size_t name_len;
   const char *field_name = luaL_checklstring(L, 2, &name_len);
 
-  lua_newtable(L);  // [table]
+  lua_newtable(L);
 
-  TSNode field = ts_node_child_by_field_name(node, field_name, (uint32_t)name_len);
-  if (!ts_node_is_null(field)) {
-    push_node(L, field, 1);  // [table, node]
-    lua_rawseti(L, -2, 1);
+  for (uint32_t i = 0; i < count; i++) {
+    const char *child_field_name = ts_node_field_name_for_child(node, i);
+    if (strequal(field_name, child_field_name)) {
+      TSNode child = ts_node_child(node, i);
+      push_node(L, child, 1);
+      lua_rawseti(L, -2, ++curr_index);
+    }
   }
 
   return 1;

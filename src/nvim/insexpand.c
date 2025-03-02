@@ -581,7 +581,8 @@ static void do_autocmd_completedone(int c, int mode, char *word)
   tv_dict_add_str(v_event, S_LEN("complete_word"), word != NULL ? word : "");
   tv_dict_add_str(v_event, S_LEN("complete_type"), mode_str != NULL ? mode_str : "");
 
-  tv_dict_add_str(v_event, S_LEN("reason"), (c == Ctrl_Y ? "accept" : "cancel"));
+  tv_dict_add_str(v_event, S_LEN("reason"),
+                  (c == Ctrl_Y ? "accept" : (c == Ctrl_E ? "cancel" : "discard")));
   tv_dict_set_keys_readonly(v_event);
 
   ins_apply_autocmds(EVENT_COMPLETEDONE);
@@ -1296,7 +1297,7 @@ static int ins_compl_build_pum(void)
             compl_shown_match = comp;
           }
         }
-        if (!shown_match_ok && comp == compl_shown_match && !compl_no_select) {
+        if (!shown_match_ok && comp == compl_shown_match) {
           cur = i;
           shown_match_ok = true;
         }
@@ -1744,6 +1745,7 @@ void ins_compl_clear(void)
   compl_cont_status = 0;
   compl_started = false;
   compl_matches = 0;
+  compl_selected_item = -1;
   compl_ins_end_col = 0;
   API_CLEAR_STRING(compl_pattern);
   API_CLEAR_STRING(compl_leader);
@@ -1806,10 +1808,12 @@ int ins_compl_len(void)
   return compl_length;
 }
 
-/// Return true when preinsert is set otherwise FALSE.
+/// Return true when the 'completeopt' "preinsert" flag is in effect,
+/// otherwise return false.
 static bool ins_compl_has_preinsert(void)
 {
-  return (get_cot_flags() & (kOptCotFlagFuzzy|kOptCotFlagPreinsert)) == kOptCotFlagPreinsert;
+  return (get_cot_flags() & (kOptCotFlagFuzzy|kOptCotFlagPreinsert|kOptCotFlagMenuone))
+         == (kOptCotFlagPreinsert|kOptCotFlagMenuone);
 }
 
 /// Returns true if the pre-insert effect is valid and the cursor is within
@@ -1912,7 +1916,7 @@ static void ins_compl_new_leader(void)
     compl_restarting = false;
   }
 
-  compl_enter_selects = !compl_used_match;
+  compl_enter_selects = !compl_used_match && compl_selected_item != -1;
 
   // Show the popup menu with a different set of matches.
   ins_compl_show_pum();
@@ -3780,20 +3784,20 @@ void ins_compl_delete(bool new_leader)
     curwin->w_cursor.col = compl_ins_end_col;
   }
 
-  char *remaining = NULL;
+  String remaining = STRING_INIT;
   if (curwin->w_cursor.lnum > compl_lnum) {
     if (curwin->w_cursor.col < get_cursor_line_len()) {
-      char *line = get_cursor_line_ptr();
-      remaining = xstrdup(line + curwin->w_cursor.col);
+      remaining = cbuf_to_string(get_cursor_pos_ptr(), (size_t)get_cursor_pos_len());
     }
 
     while (curwin->w_cursor.lnum > compl_lnum) {
       if (ml_delete(curwin->w_cursor.lnum, false) == FAIL) {
-        if (remaining) {
-          XFREE_CLEAR(remaining);
+        if (remaining.data) {
+          xfree(remaining.data);
         }
         return;
       }
+      deleted_lines_mark(curwin->w_cursor.lnum, 1);
       curwin->w_cursor.lnum--;
     }
     // move cursor to end of line
@@ -3802,8 +3806,8 @@ void ins_compl_delete(bool new_leader)
 
   if ((int)curwin->w_cursor.col > col) {
     if (stop_arrow() == FAIL) {
-      if (remaining) {
-        XFREE_CLEAR(remaining);
+      if (remaining.data) {
+        xfree(remaining.data);
       }
       return;
     }
@@ -3811,11 +3815,11 @@ void ins_compl_delete(bool new_leader)
     compl_ins_end_col = curwin->w_cursor.col;
   }
 
-  if (remaining != NULL) {
+  if (remaining.data != NULL) {
     orig_col = curwin->w_cursor.col;
-    ins_str(remaining);
+    ins_str(remaining.data, remaining.size);
     curwin->w_cursor.col = orig_col;
-    xfree(remaining);
+    xfree(remaining.data);
   }
 
   // TODO(vim): is this sufficient for redrawing?  Redrawing everything
@@ -3831,6 +3835,7 @@ static void ins_compl_expand_multiple(char *str)
 {
   char *start = str;
   char *curr = str;
+  int base_indent = get_indent();
   while (*curr != NUL) {
     if (*curr == '\n') {
       // Insert the text chunk before newline
@@ -3839,7 +3844,7 @@ static void ins_compl_expand_multiple(char *str)
       }
 
       // Handle newline
-      open_line(FORWARD, OPENLINE_KEEPTRAIL, false, NULL);
+      open_line(FORWARD, OPENLINE_KEEPTRAIL | OPENLINE_FORCE_INDENT, base_indent, NULL);
       start = curr + 1;
     }
     curr++;

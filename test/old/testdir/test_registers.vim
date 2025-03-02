@@ -266,6 +266,20 @@ func Test_zz_recording_with_select_mode_utf8_gui()
   call Run_test_recording_with_select_mode_utf8()
 endfunc
 
+func Test_recording_append_utf8()
+  new
+
+  let keys = "cc哦洛固四最倒倀\<Esc>0"
+  call feedkeys($'qr{keys}q', 'xt')
+  call assert_equal(keys, @r)
+
+  let morekeys = "A…foobar\<Esc>0"
+  call feedkeys($'qR{morekeys}q', 'xt')
+  call assert_equal(keys .. morekeys, @r)
+
+  bwipe!
+endfunc
+
 func Test_recording_with_super_mod()
   if "\<D-j>"[-1:] == '>'
     throw 'Skipped: <D- modifier not supported'
@@ -1004,6 +1018,23 @@ func Test_insert_small_delete_replace_mode()
   exe ":norm! R\<C-R>-"
   call assert_equal(['ZZZ', 'foofoo', '',  'βbβobarZZZZ'], getline(1, 4))
   bwipe!
+endfunc
+
+" this caused an illegal memory access and a crash
+func Test_register_cursor_column_negative()
+  CheckRunVimInTerminal
+  let script =<< trim END
+    f XREGISTER
+    call setline(1, 'abcdef a')
+    call setreg("a", "\n", 'c')
+    call cursor(1, 7)
+    call feedkeys("i\<C-R>\<C-P>azyx$#\<esc>", 't')
+  END
+  call writefile(script, 'XRegister123', 'D')
+  let buf = RunVimInTerminal('-S XRegister123', {})
+  call term_sendkeys(buf, "\<c-g>")
+  call WaitForAssert({-> assert_match('XREGISTER', term_getline(buf, 19))})
+  call StopVimInTerminal(buf)
 endfunc
 
 " vim: shiftwidth=2 sts=2 expandtab

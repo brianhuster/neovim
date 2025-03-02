@@ -2837,7 +2837,7 @@ func Test_complete_fuzzy_match()
   call setline(1, ['Text', 'ToText', ''])
   call cursor(2, 1)
   call feedkeys("STe\<C-X>\<C-N>x\<CR>\<Esc>0", 'tx!')
-  call assert_equal('Tex', getline('.'))
+  call assert_equal('Tex', getline(line('.') - 1))
 
   " test case for nosort option
   set cot=menuone,menu,noinsert,fuzzy,nosort
@@ -2872,6 +2872,14 @@ func Test_complete_fuzzy_match()
   call feedkeys("i\<C-R>=CompAnother()\<CR>f", 'tx')
   call assert_equal("for", g:abbr)
   call assert_equal(2, g:selected)
+
+  set cot=menu,menuone,noselect,fuzzy
+  call feedkeys("i\<C-R>=CompAnother()\<CR>\<C-N>\<C-N>\<C-N>\<C-N>", 'tx')
+  call assert_equal("foo", g:word)
+  call feedkeys("i\<C-R>=CompAnother()\<CR>\<C-P>", 'tx')
+  call assert_equal("foo", g:word)
+  call feedkeys("i\<C-R>=CompAnother()\<CR>\<C-P>\<C-P>", 'tx')
+  call assert_equal("for", g:abbr)
 
   " clean up
   set omnifunc=
@@ -3102,8 +3110,63 @@ function Test_completeopt_preinsert()
   call assert_equal("fobar", getline('.'))
   call assert_equal(5, col('.'))
 
+  " When the pum is not visible, the preinsert has no effect
+  set cot=preinsert
+  call feedkeys("Sfoo1 foo2\<CR>f\<C-X>\<C-N>bar", 'tx')
+  call assert_equal("foo1bar", getline('.'))
+  call assert_equal(7, col('.'))
+
+  set cot=preinsert,menuone
+  call feedkeys("Sfoo1 foo2\<CR>f\<C-X>\<C-N>", 'tx')
+  call assert_equal("foo1", getline('.'))
+  call assert_equal(1, col('.'))
+
   bw!
   set cot&
+  set omnifunc&
+  delfunc Omni_test
+endfunc
+
+" Check that mark positions are correct after triggering multiline completion.
+func Test_complete_multiline_marks()
+  func Omni_test(findstart, base)
+    if a:findstart
+      return col(".")
+    endif
+    return [
+          \ #{word: "func ()\n\t\nend"},
+          \ #{word: "foobar"},
+          \ #{word: "你好\n\t\n我好"}
+          \ ]
+  endfunc
+  set omnifunc=Omni_test
+
+  new
+  let lines = mapnew(range(10), 'string(v:val)')
+  call setline(1, lines)
+  call setpos("'a", [0, 3, 1, 0])
+
+  call feedkeys("A \<C-X>\<C-O>\<C-E>\<BS>", 'tx')
+  call assert_equal(lines, getline(1, '$'))
+  call assert_equal([0, 3, 1, 0], getpos("'a"))
+
+  call feedkeys("A \<C-X>\<C-O>\<C-N>\<C-E>\<BS>", 'tx')
+  call assert_equal(lines, getline(1, '$'))
+  call assert_equal([0, 3, 1, 0], getpos("'a"))
+
+  call feedkeys("A \<C-X>\<C-O>\<C-N>\<C-N>\<C-E>\<BS>", 'tx')
+  call assert_equal(lines, getline(1, '$'))
+  call assert_equal([0, 3, 1, 0], getpos("'a"))
+
+  call feedkeys("A \<C-X>\<C-O>\<C-N>\<C-N>\<C-N>\<C-E>\<BS>", 'tx')
+  call assert_equal(lines, getline(1, '$'))
+  call assert_equal([0, 3, 1, 0], getpos("'a"))
+
+  call feedkeys("A \<C-X>\<C-O>\<C-Y>", 'tx')
+  call assert_equal(['0 func ()', "\t", 'end'] + lines[1:], getline(1, '$'))
+  call assert_equal([0, 5, 1, 0], getpos("'a"))
+
+  bw!
   set omnifunc&
   delfunc Omni_test
 endfunc

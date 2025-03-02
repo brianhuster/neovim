@@ -34,8 +34,6 @@ M.minimum_language_version = vim._ts_get_minimum_language_version()
 function M._create_parser(bufnr, lang, opts)
   bufnr = vim._resolve_bufnr(bufnr)
 
-  vim.fn.bufload(bufnr)
-
   local self = LanguageTree.new(bufnr, lang, opts)
 
   local function bytes_cb(_, ...)
@@ -102,6 +100,9 @@ function M.get_parser(bufnr, lang, opts)
       return nil, err_msg
     end
   elseif parsers[bufnr] == nil or parsers[bufnr]:lang() ~= lang then
+    if not api.nvim_buf_is_loaded(bufnr) then
+      error(('Buffer %s must be loaded to create parser'):format(bufnr))
+    end
     local parser = vim.F.npcall(M._create_parser, bufnr, lang, opts)
     if not parser then
       local err_msg =
@@ -305,7 +306,7 @@ end
 
 --- Returns a list of highlight capture names under the cursor
 ---
----@param winnr (integer|nil) Window handle or 0 for current window (default)
+---@param winnr (integer|nil): |window-ID| or 0 for current window (default)
 ---
 ---@return string[] List of capture names
 function M.get_captures_at_cursor(winnr)
@@ -415,6 +416,14 @@ end
 ---@param lang string? Language of the parser (default: from buffer filetype)
 function M.start(bufnr, lang)
   bufnr = vim._resolve_bufnr(bufnr)
+  -- Ensure buffer is loaded. `:edit` over `bufload()` to show swapfile prompt.
+  if not api.nvim_buf_is_loaded(bufnr) then
+    if api.nvim_buf_get_name(bufnr) ~= '' then
+      pcall(api.nvim_buf_call, bufnr, vim.cmd.edit)
+    else
+      vim.fn.bufload(bufnr)
+    end
+  end
   local parser = assert(M.get_parser(bufnr, lang, { error = false }))
   M.highlighter.new(parser)
 end

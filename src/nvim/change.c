@@ -205,9 +205,10 @@ static void changed_lines_invalidate_win(win_T *wp, linenr_T lnum, colnr_T col, 
         } else if (xtra != 0) {
           // line below change
           wp->w_lines[i].wl_lnum += xtra;
+          wp->w_lines[i].wl_foldend += xtra;
           wp->w_lines[i].wl_lastlnum += xtra;
         }
-      } else if (wp->w_lines[i].wl_lastlnum >= lnum) {
+      } else if (wp->w_lines[i].wl_foldend >= lnum) {
         // change somewhere inside this range of folded lines,
         // may need to be redrawn
         wp->w_lines[i].wl_valid = false;
@@ -804,9 +805,8 @@ void ins_char_bytes(char *buf, size_t charlen)
 /// Insert a string at the cursor position.
 /// Note: Does NOT handle Replace mode.
 /// Caller must have prepared for undo.
-void ins_str(char *s)
+void ins_str(char *s, size_t slen)
 {
-  int newlen = (int)strlen(s);
   linenr_T lnum = curwin->w_cursor.lnum;
 
   if (virtual_active(curwin) && curwin->w_cursor.coladd > 0) {
@@ -817,17 +817,17 @@ void ins_str(char *s)
   char *oldp = ml_get(lnum);
   int oldlen = ml_get_len(lnum);
 
-  char *newp = xmalloc((size_t)oldlen + (size_t)newlen + 1);
+  char *newp = xmalloc((size_t)oldlen + slen + 1);
   if (col > 0) {
     memmove(newp, oldp, (size_t)col);
   }
-  memmove(newp + col, s, (size_t)newlen);
+  memmove(newp + col, s, slen);
   int bytes = oldlen - col + 1;
   assert(bytes >= 0);
-  memmove(newp + col + newlen, oldp + col, (size_t)bytes);
+  memmove(newp + col + slen, oldp + col, (size_t)bytes);
   ml_replace(lnum, newp, false);
-  inserted_bytes(lnum, col, 0, newlen);
-  curwin->w_cursor.col += newlen;
+  inserted_bytes(lnum, col, 0, (int)slen);
+  curwin->w_cursor.col += (int)slen;
 }
 
 // Delete one character under the cursor.
@@ -1072,6 +1072,7 @@ bool copy_indent(int size, char *src)
 ///          OPENLINE_KEEPTRAIL keep trailing spaces
 ///          OPENLINE_MARKFIX   adjust mark positions after the line break
 ///          OPENLINE_COM_LIST  format comments with list or 2nd line indent
+///          OPENLINE_FORCE_INDENT  set indent from second_line_indent, ignore 'autoindent'
 ///
 /// "second_line_indent": indent for after ^^D in Insert mode or if flag
 ///                       OPENLINE_COM_LIST
@@ -1163,9 +1164,11 @@ bool open_line(int dir, int flags, int second_line_indent, bool *did_do_comment)
     trunc_line = true;
   }
 
-  // If 'autoindent' and/or 'smartindent' is set, try to figure out what
-  // indent to use for the new line.
-  if (curbuf->b_p_ai || do_si) {
+  if ((flags & OPENLINE_FORCE_INDENT)) {
+    newindent = second_line_indent;
+  } else if (curbuf->b_p_ai || do_si) {
+    // If 'autoindent' and/or 'smartindent' is set, try to figure out what
+    // indent to use for the new line.
     // count white space on current line
     newindent = indent_size_ts(saved_line, curbuf->b_p_ts, curbuf->b_p_vts_array);
     if (newindent == 0 && !(flags & OPENLINE_COM_LIST)) {

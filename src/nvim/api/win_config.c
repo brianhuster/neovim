@@ -214,7 +214,7 @@
 ///
 /// @param[out] err Error details, if any
 ///
-/// @return Window handle, or 0 on error
+/// @return |window-ID|, or 0 on error
 Window nvim_open_win(Buffer buffer, Boolean enter, Dict(win_config) *config, Error *err)
   FUNC_API_SINCE(6) FUNC_API_TEXTLOCK_ALLOW_CMDWIN
 {
@@ -387,7 +387,7 @@ static int win_split_flags(WinSplit split, bool toplevel)
 ///
 /// @see |nvim_open_win()|
 ///
-/// @param      window  Window handle, or 0 for current window
+/// @param      window  |window-ID|, or 0 for current window
 /// @param      config  Map defining the window configuration,
 ///                     see |nvim_open_win()|
 /// @param[out] err     Error details, if any
@@ -694,7 +694,7 @@ static void config_put_bordertext(Dict(win_config) *config, WinConfig *fconfig,
 ///
 /// `relative` is empty for normal windows.
 ///
-/// @param      window Window handle, or 0 for current window
+/// @param      window |window-ID|, or 0 for current window
 /// @param[out] err Error details, if any
 /// @return     Map defining the window configuration, see |nvim_open_win()|
 Dict(win_config) nvim_win_get_config(Window window, Arena *arena, Error *err)
@@ -1240,11 +1240,6 @@ static bool parse_win_config(win_T *wp, Dict(win_config) *config, WinConfig *fco
       api_set_error(err, kErrorTypeValidation, "non-float cannot have 'title'");
       goto fail;
     }
-    // title only work with border
-    if (!HAS_KEY_X(config, border) && !fconfig->border) {
-      api_set_error(err, kErrorTypeException, "title requires border to be set");
-      goto fail;
-    }
 
     parse_bordertext(config->title, kBorderTextTitle, fconfig, err);
     if (ERROR_SET(err)) {
@@ -1265,11 +1260,6 @@ static bool parse_win_config(win_T *wp, Dict(win_config) *config, WinConfig *fco
   if (HAS_KEY_X(config, footer)) {
     if (is_split) {
       api_set_error(err, kErrorTypeValidation, "non-float cannot have 'footer'");
-      goto fail;
-    }
-    // footer only work with border
-    if (!HAS_KEY_X(config, border) && !fconfig->border) {
-      api_set_error(err, kErrorTypeException, "footer requires border to be set");
       goto fail;
     }
 

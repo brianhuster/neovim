@@ -236,6 +236,7 @@ error('Cannot require a meta file')
 --- @field on_end? fun(_: "end", tick: integer)
 --- @field _on_hl_def? fun(_: "hl_def")
 --- @field _on_spell_nav? fun(_: "spell_nav")
+--- @field _on_conceal_line? fun(_: "conceal_line")
 
 --- @class vim.api.keyset.set_extmark
 --- @field id? integer
@@ -258,6 +259,7 @@ error('Cannot require a meta file')
 --- @field virt_lines? any[]
 --- @field virt_lines_above? boolean
 --- @field virt_lines_leftcol? boolean
+--- @field virt_lines_overflow? string
 --- @field strict? boolean
 --- @field sign_text? string
 --- @field sign_hl_group? integer|string
@@ -265,6 +267,7 @@ error('Cannot require a meta file')
 --- @field line_hl_group? integer|string
 --- @field cursorline_hl_group? integer|string
 --- @field conceal? string
+--- @field conceal_lines? string
 --- @field spell? boolean
 --- @field ui_watched? boolean
 --- @field undo_restore? boolean
