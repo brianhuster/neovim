@@ -199,8 +199,9 @@ For a module `foo.bar`, each directory is searched for `lua/foo/bar.lua`, then
 again for a shared library with a name matching `lua/foo/bar.?`, where `?` is
 a list of suffixes (such as `so` or `dll`) derived from the initial value of
 |package.cpath|. If still no files are found, Nvim falls back to Lua's default
-search mechanism. The first script found is run and `require()` returns the
-value returned by the script if any, else `true`.
+search mechanism (see |package.path| and |package.cpath|). The first script
+found is run and `require()` returns the value returned by the script if any,
+else `true`.
 
 The return value is cached after the first call to `require()` for each module,
 with subsequent calls returning the cached value without searching for, or
@@ -218,17 +219,6 @@ and loads the first module found ("first wins"): >
     bar/lua/mod.so
     bar/lua/mod.dll
 <
-Note:
-
-- Although 'runtimepath' is tracked, Nvim does not track current
-  values of |package.path| or |package.cpath|. If you happen to delete some
-  paths from there you can set 'runtimepath' to trigger an update: >vim
-      let &runtimepath = &runtimepath
-
-- Skipping paths from 'runtimepath' which contain semicolons applies both to
-  |package.path| and |package.cpath|. Given that there are some badly written
-  plugins using shell, which will not work with paths containing semicolons,
-  it is better to not have them in 'runtimepath' at all.
 
 ==============================================================================
 COMMANDS                                                        *lua-commands*
