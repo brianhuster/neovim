@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:	Vim help file
 " Maintainer:	The Vim Project <https://github.com/vim/vim>
-" Last Change:	2024 Oct 16
+" Last Change:	2024 Dec 15
 " Former Maintainer:	Bram Moolenaar <Bram@vim.org>
 
 " Quit when a (custom) syntax file was already loaded
