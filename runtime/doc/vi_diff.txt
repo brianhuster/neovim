@@ -82,6 +82,10 @@ Multiple windows and buffers.				|windows.txt|
 	line with tab labels can be used to quickly switch between these pages.
 	|tab-page|
 
+Terminal window.					|:terminal|
+	Vim can create a window in which a terminal emulator runs.  This can
+	be used to execute an arbitrary command, a shell or a debugger.
+
 Syntax highlighting.					|:syntax|
 	Vim can highlight keywords, patterns and other things.  This is
 	defined by a number of |:syntax| commands, and can be made to
@@ -95,6 +99,11 @@ Syntax highlighting.					|:syntax|
 	Other items that can be highlighted are matches with the search string
 	|'hlsearch'|, matching parens |matchparen| and the cursor line and
 	column |'cursorline'| |'cursorcolumn'|.
+
+Text properties						|textprop.txt|
+	Vim supports highlighting text by a plugin.  Property types can be
+	specificed with |prop_type_add()| and properties can be placed with
+	|prop_add()|.
 
 Spell checking.						|spell|
 	When the 'spell' option is set Vim will highlight spelling mistakes.
@@ -162,6 +171,8 @@ Visual mode.						|Visual-mode|
 		~	swap case
 		u	make lowercase
 		U	make uppercase
+	{Vi has no Visual mode, the name "visual" is used for Normal mode, to
+	distinguish it from Ex mode}
 
 Block operators.					|visual-block|
 	With Visual mode a rectangular block of text can be selected.  Start

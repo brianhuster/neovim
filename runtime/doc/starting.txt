@@ -70,6 +70,7 @@ filename	One or more file names.  The first one will be the current
 		and the first error is displayed.  See |quickfix|.
 		If [errorfile] is not given, the 'errorfile' option is used
 		for the file name.  See 'errorfile' for the default value.
+		{not in Vi}
 
 (nothing)	Without one of the four items above, Vim will start editing a
 		new buffer.  It's empty and doesn't have a file name.

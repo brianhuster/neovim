@@ -53,7 +53,7 @@ CTRL-]			Jump to the definition of the keyword under the
 
 							*v_CTRL-]*
 {Visual}CTRL-]		Same as ":tag {name}", where {name} is the text that
-			is highlighted.
+			is highlighted.  {not in Vi}
 
 							*telnet-CTRL-]*
 CTRL-] is the default telnet escape key.  When you type CTRL-] to jump to a
@@ -108,18 +108,18 @@ Tags are only pushed onto the stack when the 'tagstack' option is set.
 g<RightMouse>						*g<RightMouse>*
 <C-RightMouse>					*<C-RightMouse>* *CTRL-T*
 CTRL-T			Jump to [count] older entry in the tag stack
-			(default 1).
+			(default 1).  {not in Vi}
 
 						*:po* *:pop* *E555* *E556*
 :[count]po[p][!]	Jump to [count] older entry in tag stack (default 1).
-			See |tag-!| for [!].
+			See |tag-!| for [!].  {not in Vi}
 
 :[count]ta[g][!]	Jump to [count] newer entry in tag stack (default 1).
-			See |tag-!| for [!].
+			See |tag-!| for [!].  {not in Vi}
 
 							*:tags*
 :tags			Show the contents of the tag stack.  The active
-			entry is marked with a '>'.
+			entry is marked with a '>'.  {not in Vi}
 
 The output of ":tags" looks like this:
 
@@ -223,7 +223,7 @@ the same entry.
 			the current position in the list (if there is one).
 			[name] can be a regexp pattern, see |tag-regexp|.
 			See |tag-priority| for the priorities used in the
-			listing.
+			listing.  {not in Vi}
 			Example output:
 
 >
@@ -305,6 +305,7 @@ g CTRL-]		Like CTRL-], but use ":tjump" instead of ":tag".
 			characters (very nomagic). The location list showing
 			the matching tags is independent of the tag stack.
 			See |tag-!| for [!].
+			{not in Vi}
 
 When there is no other message, Vim shows which matching tag has been jumped
 to, and the number of matching tags: >
