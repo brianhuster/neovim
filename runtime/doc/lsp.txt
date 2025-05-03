@@ -252,8 +252,8 @@ FAQ                                                     *lsp-faq*
      " (async = false is the default for format)
      autocmd BufWritePre *.rs lua vim.lsp.buf.format({ async = false })
 <
-                                                        *lsp-vs-treesitter*
-- Q: How do LSP and Treesitter compare?
+                                                    *lsp-vs-treesitter-vs-ctags*
+- Q: How do LSP, Treesitter and Ctags compare?
 - A: LSP requires a client and language server. The language server uses
      semantic analysis to understand code at a project level. This provides
      language servers with the ability to rename across files, find
@@ -264,6 +264,12 @@ FAQ                                                     *lsp-faq*
      fit for editors to understand the contents of the current file for things
      like syntax highlighting, simple goto-definitions, scope analysis and
      more.
+
+     A |ctags|-like program can generate a |tags| file that allows Nvim to
+     jump to definitions, provide simple completions via |i_CTRL-X_CTRL-]|
+     command. It is not as featureful and often doesn't have as good semantic
+     understanding as language servers, but it is fast, lightweight and useful
+     for navigating polyglot projects.
 
 ================================================================================
 LSP API                                                 *lsp-api*
