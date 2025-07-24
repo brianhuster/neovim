@@ -50,12 +50,6 @@
 ---- Restart Nvim (for example, with |:restart|). Plugins that were not yet
 ---installed will be available on disk in target state after `add()` call.
 ---
----- To update all plugins with new changes:
----    - Execute |vim.pack.update()|. This will download updates from source and
----      show confirmation buffer in a separate tabpage.
----    - Review changes. To confirm all updates execute |:write|.
----      To discard updates execute |:quit|.
----
 ---Switch plugin's version:
 ---- Update 'init.lua' for plugin to have desired `version`. Let's say, plugin
 ---named 'plugin1' has changed to `vim.version.range('*')`.
@@ -76,9 +70,29 @@
 ---you want it to be updated.
 ---- |:restart|.
 ---
----Remove plugins from disk:
----- Use |vim.pack.del()| with a list of plugin names to remove. Make sure their specs
----are not included in |vim.pack.add()| call in 'init.lua' or they will be reinstalled.
+---<pre>help
+--- COMMANDS ~
+---
+--- :packupdate[!] {plugins}                                          *:packupdate*
+---
+---                  Update {plugin} with new changes. {plugin} must be managed by
+---                  |vim.pack|, not necessarily already added to current session.
+---                  If {plugin} is not specified, all plugin added to current
+---                  session via |vim.pack.add()| will be updated.
+---                  A separate tabpage will be opened so you can review changes
+---                  before confirming updates. To confirm all updates execute
+---                  |:write|. To discard updates execute |:quit|.
+---                  If `!` is specified, make updates immediately without
+---                  confirmation.
+---
+--- :packdelete {plugins}                                             *:packdelete*
+---
+---                  Delete {plugins} from disk. {plugins} must be managed by
+---                  |vim.pack|, not necessarily already added to current session.
+---                  Make sure their specs are not included in |vim.pack.add()| call
+---                  in your config or they will be reinstalled after you restart
+---                  Nvim.
+---</pre>
 ---
 --- Available events to hook into ~
 ---
@@ -90,6 +104,8 @@
 --- plugin), "delete" (delete from disk).
 --- - `spec` - plugin's specification.
 --- - `path` - full path to plugin's directory.
+---
+---
 
 local api = vim.api
 local uv = vim.uv
@@ -924,6 +940,24 @@ function M.update(names, opts)
   end)
 end
 
+--- @nodoc
+--- @param names string
+--- @param force boolean
+function M._ex_packupdate(names, force)
+  local args = vim.api.nvim_parse_cmd('packupdate ' .. names, {}).args
+  M.update(args and args[1] and args or nil, { force = force })
+end
+
+--- @nodoc
+--- Return a list of package names managed by |vim.pack|. Used to complete |:packupdate| and
+--- |:packdelete|
+--- @return string[]
+function M._get_managed_pack_names()
+  return vim.iter(vim.fn.readdir(get_plug_dir())):map(function(n)
+    return vim.fn.fnameescape(n)
+  end):totable()
+end
+
 --- Remove plugins from disk
 ---
 --- @param names string[] List of plugin names to remove from disk. Must be managed
@@ -950,6 +984,13 @@ function M.del(names)
       trigger_event(p, 'PackChanged', 'delete')
     end
   end
+end
+
+--- @nodoc
+--- @param names string
+function M._ex_packdelete(names)
+  local args = vim.api.nvim_parse_cmd('packdelete ' .. names, {}).args
+  M.del(args or {})
 end
 
 --- @inlinedoc
