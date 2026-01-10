@@ -621,16 +621,10 @@ endfunc
 " breakpoint.
 func s:PromptInterrupt()
   " call ch_log('Interrupting gdb')
-  if has('win32')
-    " Using job_stop() does not work on MS-Windows, need to send SIGTRAP to
-    " the debugger program so that gdb responds again.
-    if s:pid == 0
-      call s:Echoerr('Cannot interrupt gdb, did not find a process ID')
-    else
-      call debugbreak(s:pid)
-    endif
+  if s:pid == 0
+    call s:Echoerr('Cannot interrupt gdb, did not find a process ID')
   else
-    call v:lua.vim.uv.kill(jobpid(s:gdbjob), 'sigint')
+    call debugbreak(s:pid)
   endif
 endfunc
 
@@ -692,7 +686,9 @@ func s:GdbOutCallback(job_id, msgs, event)
 
   " Add the output above the current prompt.
   for line in lines
-    call append(line('$') - 1, line)
+    " Nvim supports multi-line input in prompt-buffer, so the prompt line is
+    " not always the last line.
+    call append(line("':") - 1, line)
   endfor
   if !empty(lines)
     set modified
