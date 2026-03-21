@@ -1403,11 +1403,11 @@ end
 ---@see |CompleteDone|
 ---
 ---@param findstart integer 0 or 1, decides behavior
----@param base integer findstart=0, text to match against
+---@param base string findstart=0, text to match against
 ---
 ---@return integer|table Decided by {findstart}:
---- - findstart=1: column where the completion starts, or -2 or -3
---- - findstart=0: list of matches (actually just calls |complete()|)
+--- - findstart=1: column where the completion starts, or -1 if no completion available
+--- - findstart=0: list of matches
 function lsp.omnifunc(findstart, base)
   return vim.lsp.completion._omnifunc(findstart, base)
 end

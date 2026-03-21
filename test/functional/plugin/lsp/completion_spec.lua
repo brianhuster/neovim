@@ -1424,7 +1424,7 @@ describe('vim.lsp.completion: integration', function()
       {1:~                           }{100:r: any[])\n  -> any[]}{1: }|
       {1:~                           }{100:\n}{4:                   }{1: }|
       {1:~                                                 }|*14
-      {5:-- INSERT --}                                      |
+      {5:-- Omni completion (^O^N^P) The only match}        |
     ]])
   end)
 

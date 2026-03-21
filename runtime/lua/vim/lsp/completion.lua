@@ -1263,25 +1263,78 @@ end
 --- @see |CompleteDone|
 ---
 --- @param findstart integer 0 or 1, decides behavior
---- @param base integer findstart=0, text to match against
+--- @param base string findstart=0, text to match against
 ---
 --- @return integer|table Decided by {findstart}:
---- - findstart=1: column where the completion starts, or -2 or -3
---- - findstart=0: list of matches (actually just calls |complete()|)
+--- - findstart=1: column where the completion starts, or -1 if no completion available
+--- - findstart=0: list of matches
 function M._omnifunc(findstart, base)
   lsp.log.debug('omnifunc.findstart', { findstart = findstart, base = base })
   local bufnr = api.nvim_get_current_buf()
-  local clients = lsp.get_clients({ bufnr = bufnr, method = 'textDocument/completion' })
-  local remaining = #clients
-  if remaining == 0 then
-    return findstart == 1 and -1 or {}
+  local win = api.nvim_get_current_win()
+  local cursor_row, cursor_col = unpack(api.nvim_win_get_cursor(win))
+  local line = api.nvim_get_current_line()
+  local line_to_cursor = line:sub(1, cursor_col)
+
+  if findstart == 1 then
+    -- First invocation: find the start of the text to be completed
+    local clients = lsp.get_clients({ bufnr = bufnr, method = 'textDocument/completion' })
+    if #clients == 0 then
+      return -1
+    end
+    -- Return word boundary (start of keyword characters before cursor)
+    return vim.fn.match(line_to_cursor, '\\k*$')
   end
 
-  trigger(bufnr, clients, { triggerKind = protocol.CompletionTriggerKind.Invoked })
+  -- Second invocation: find the matches
+  local lnum = cursor_row - 1
+  local word_boundary = vim.fn.match(line_to_cursor, '\\k*$')
 
-  -- Return -2 to signal that we should continue completion so that we can
-  -- async complete.
-  return -2
+  local responses, err = lsp.buf_request_sync(bufnr, 'textDocument/completion', function(client)
+    local params = lsp.util.make_position_params(win, client.offset_encoding)
+    params.context = { triggerKind = protocol.CompletionTriggerKind.Invoked }
+    return params
+  end, 1000)
+  if err or not responses then
+    return {}
+  end
+
+  local all_matches = {}
+  local server_start_boundary --- @type integer?
+  for client_id, response in pairs(responses) do
+    if not response.error and response.result then
+      local client = lsp.get_client_by_id(client_id)
+      local encoding = client and client.offset_encoding or 'utf-16'
+      local client_matches, client_server_boundary = M._convert_results(
+        line,
+        lnum,
+        cursor_col,
+        client_id,
+        word_boundary,
+        server_start_boundary,
+        response.result,
+        encoding
+      )
+      server_start_boundary = client_server_boundary or server_start_boundary
+      vim.list_extend(all_matches, client_matches)
+    end
+  end
+
+  -- Register CompleteDone handler for snippet expansion and additional text edits
+  register_completedone(bufnr)
+
+  -- Store cursor position for CompleteDone handler
+  Context.cursor = { cursor_row, (server_start_boundary or word_boundary) + 1 }
+
+  -- Set up CompleteChanged handler for completionItem/resolve and preview popup
+  if #all_matches > 0 and has_completeopt('popup') then
+    local group = get_augroup(bufnr)
+    if #api.nvim_get_autocmds({ buffer = bufnr, event = 'CompleteChanged', group = group }) == 0 then
+      on_completechanged(group, bufnr)
+    end
+  end
+
+  return all_matches
 end
 
 return M
